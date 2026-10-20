@@ -1,0 +1,105 @@
+<div class="layout">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-icon">S<span>✧</span></div>
+      <div class="brand-copy"><strong>sweet lizzi</strong><small>ESTUDIO DE COSTOS</small></div>
+    </div>
+    <p class="sidebar-eyebrow">ESPACIO DE TRABAJO</p>
+    <nav class="side-nav" aria-label="Secciones">
+      <button type="button" *ngFor="let item of nav" [class.active]="tab() === item.id" (click)="setTab(item.id)">
+        <span class="nav-icon">{{item.icon}}</span>{{item.label}}<span *ngIf="tab() === item.id" class="nav-arrow">›</span>
+      </button>
+    </nav>
+    <div class="sidebar-bottom">
+      <div class="storage-status"><span class="status-dot"></span>Datos guardados en este navegador</div>
+      <button type="button" class="text-button dark" (click)="exportBackup()">↓ Exportar respaldo</button>
+      <label class="text-button dark upload">↑ Importar respaldo<input type="file" accept="application/json,.json" (change)="importBackup($event)"></label>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar"><span>MI TALLER <span class="topbar-slash">/</span> {{tab() === 'dashboard' ? 'RESUMEN' : tab() === 'recipes' ? 'RECETAS' : tab() === 'ingredients' ? 'INGREDIENTES' : tab() === 'materials' ? 'MATERIALES' : 'GASTOS'}}</span><span class="top-badge">CLP · Pesos chilenos</span></header>
+    <div class="main-inner">
+      <div class="notification" *ngIf="notice()"><span>{{notice()}}</span><button type="button" (click)="notice.set('')" aria-label="Cerrar">×</button></div>
+
+      <ng-container *ngIf="tab() === 'dashboard'">
+        <div class="page-head"><div><p class="overline">EL CORAZÓN DE TU NEGOCIO</p><h1>Tu taller, en números<span class="accent">.</span></h1><p class="lead">Calcula cada detalle y ponle un precio justo a tus creaciones.</p></div><button class="primary" type="button" (click)="createRecipe()">＋ Nueva receta</button></div>
+        <div class="summary-cards">
+          <div class="metric"><div class="metric-icon blush">▤</div><small>Recetas guardadas</small><strong>{{count()}}</strong><span>Preparaciones en tu catálogo</span></div>
+          <div class="metric"><div class="metric-icon sand">◈</div><small>Gastos mensuales</small><strong>{{money(store.monthlyTotal())}}</strong><span>Gastos generales registrados</span></div>
+          <div class="metric"><div class="metric-icon lilac">◉</div><small>Gasto fijo por unidad</small><strong>{{money(store.overheadPerUnit())}}</strong><span>Según producción estimada</span></div>
+        </div>
+        <div class="grid-two dashboard-grid">
+          <section class="panel"><div class="panel-heading"><div><p class="overline">MIS CREACIONES</p><h2>Últimas recetas</h2></div><button class="text-button" type="button" (click)="setTab('recipes')">Ver todas →</button></div>
+            <div class="recipe-preview" *ngFor="let recipe of store.data().recipes"><div class="preview-avatar">✿</div><div class="preview-details"><strong>{{recipe.name}}</strong><small>{{recipe.yield}} unidad(es) vendibles</small></div><div class="preview-price"><strong>{{money(suggested(recipe))}}</strong><small>Precio sugerido / unid.</small></div><button class="icon-button" type="button" title="Abrir receta" (click)="setTab('recipes');openRecipe(recipe.id)">→</button></div>
+            <div class="empty" *ngIf="!store.data().recipes.length">Todavía no tienes recetas. ¡Crea la primera!</div>
+          </section>
+          <section class="panel tip-panel"><p class="overline">UNA BASE SÓLIDA</p><h2>El costo real está en los detalles.</h2><p>Esta calculadora suma ingredientes, empaques, mano de obra, reparto y una proporción de los gastos generales.</p><div class="mini-check">✓ Convierte automáticamente kg ↔ g y l ↔ ml</div><div class="mini-check">✓ Actualiza los costos cuando cambian tus precios</div><div class="mini-check">✓ Sugiere precios según tu margen objetivo</div><div class="tip-note">Los precios y recetas cargados inicialmente son <b>ejemplos editables</b>.</div></section>
+        </div>
+      </ng-container>
+
+      <ng-container *ngIf="tab() === 'ingredients' || tab() === 'materials'">
+        <div class="page-head"><div><p class="overline">MI CATÁLOGO</p><h1>{{catalogTitle()}}<span class="accent">.</span></h1><p class="lead">{{catalogSubtitle()}}</p></div></div>
+        <div class="grid-two catalog-layout">
+          <section class="panel"><div class="panel-heading"><div><p class="overline">PRECIOS ACTUALES</p><h2>{{catalogRows().length}} productos registrados</h2></div></div>
+            <div class="table-scroll"><table><thead><tr><th>Producto</th><th>Presentación</th><th>Precio</th><th>Precio base</th><th></th></tr></thead><tbody>
+              <tr *ngFor="let item of catalogRows()"><td class="strong">{{item.name}}</td><td>{{decimal(item.quantity)}} {{item.unit}}</td><td>{{money(item.price)}}</td><td class="muted">{{perBaseUnit(item)}}</td><td class="actions"><button type="button" class="icon-button" (click)="editStock(item)" title="Editar">✎</button><button type="button" class="icon-button danger" (click)="deleteStock(item)" title="Eliminar">×</button></td></tr>
+              <tr *ngIf="!catalogRows().length"><td colspan="5" class="empty">Todavía no hay productos.</td></tr>
+            </tbody></table></div>
+          </section>
+          <section class="panel form-panel"><p class="overline">{{stockDraft.id ? 'EDITAR REGISTRO' : 'NUEVO REGISTRO'}}</p><h2>{{stockDraft.id ? 'Editar producto' : 'Agregar producto'}}</h2>
+            <label>Nombre del producto<input type="text" [(ngModel)]="stockDraft.name" placeholder="Ej: Harina sin polvos" maxlength="100"></label>
+            <div class="form-grid"><label>Cantidad comprada<input type="number" [(ngModel)]="stockDraft.quantity" min="0.001" step="any"></label><label>Unidad de compra<select [(ngModel)]="stockDraft.unit"><option *ngFor="let u of unitChoices" [value]="u">{{u}}</option></select></label></div>
+            <label>Precio de la presentación (CLP)<input type="number" [(ngModel)]="stockDraft.price" min="0" step="1"></label>
+            <div class="form-example" *ngIf="stockDraft.quantity > 0 && stockDraft.price >= 0">Costo por unidad base: <b>{{perBaseUnit(stockDraft)}}</b></div>
+            <div class="form-actions"><button class="primary" type="button" (click)="saveStock()">{{stockDraft.id ? 'Guardar cambios' : '＋ Agregar producto'}}</button><button *ngIf="stockDraft.id" class="secondary" type="button" (click)="resetStock()">Cancelar</button></div>
+          </section>
+        </div>
+      </ng-container>
+
+      <ng-container *ngIf="tab() === 'expenses'">
+        <div class="page-head"><div><p class="overline">ADMINISTRACIÓN</p><h1>Gastos generales<span class="accent">.</span></h1><p class="lead">Distribuye los gastos mensuales sobre tu producción estimada.</p></div></div>
+        <div class="summary-cards two-cards"><div class="metric"><small>Gastos registrados al mes</small><strong>{{money(store.monthlyTotal())}}</strong><span>Electricidad, arriendo, agua, etc.</span></div><div class="metric"><small>Gasto general por unidad vendible</small><strong>{{money(store.overheadPerUnit())}}</strong><span>Aplicado automáticamente a las recetas</span></div></div>
+        <div class="grid-two catalog-layout">
+          <section class="panel"><div class="panel-heading"><div><p class="overline">GASTOS DEL MES</p><h2>Detalle de costos generales</h2></div></div><div class="table-scroll"><table><thead><tr><th>Concepto</th><th>Monto mensual</th><th></th></tr></thead><tbody>
+            <tr *ngFor="let expense of store.data().expenses"><td class="strong">{{expense.name}}</td><td>{{money(expense.amount)}}</td><td class="actions"><button type="button" class="icon-button" title="Editar" (click)="expenseDraft = { ...expense }">✎</button><button type="button" class="icon-button danger" title="Eliminar" (click)="deleteExpense(expense.id)">×</button></td></tr>
+            <tr *ngIf="!store.data().expenses.length"><td colspan="3" class="empty">Agrega tu primer gasto mensual.</td></tr>
+          </tbody></table></div></section>
+          <div class="panel-stack">
+            <section class="panel form-panel"><p class="overline">{{expenseDraft.id ? 'EDITAR GASTO' : 'AGREGAR GASTO'}}</p><h2>{{expenseDraft.id ? 'Editar gasto mensual' : 'Nuevo gasto mensual'}}</h2><label>Concepto<input [(ngModel)]="expenseDraft.name" placeholder="Ej: Electricidad mensual" maxlength="100"></label><label>Monto mensual (CLP)<input type="number" [(ngModel)]="expenseDraft.amount" min="0" step="1"></label><div class="form-actions"><button class="primary" type="button" (click)="saveExpense()">Guardar gasto</button><button type="button" class="secondary" *ngIf="expenseDraft.id" (click)="expenseDraft = {id: '', name: '', amount: 0}">Cancelar</button></div></section>
+            <section class="panel form-panel"><p class="overline">REPARTO DE GASTOS</p><h2>Producción mensual estimada</h2><p class="helper">Cantidad de unidades <b>vendibles</b> que esperas producir al mes. Debes usar la misma definición de unidad que en tus recetas (caja, pastel, etc.).</p><label>Unidades vendibles al mes<input type="number" [(ngModel)]="productionDraft" min="1" step="1"></label><button class="secondary" type="button" (click)="saveProduction()">Actualizar producción</button></section>
+          </div>
+        </div>
+        <div class="footnote">Importante: si ya agregas electricidad como gasto mensual, no la vuelvas a sumar como gasto directo en la receta. El reparto de delivery corresponde normalmente a un costo variable por pedido, no a un gasto fijo.</div>
+      </ng-container>
+
+      <ng-container *ngIf="tab() === 'recipes'">
+        <div class="page-head"><div><p class="overline">TU LIBRO DE RECETAS</p><h1>Mis recetas<span class="accent">.</span></h1><p class="lead">De los ingredientes al precio de venta, todo en un solo lugar.</p></div><button class="primary" type="button" (click)="createRecipe()">＋ Nueva receta</button></div>
+        <div class="recipes-layout">
+          <aside class="recipes-sidebar panel"><p class="overline">TODAS LAS RECETAS</p><button *ngFor="let recipe of store.data().recipes" type="button" class="recipe-link" [class.selected]="selectedRecipeId() === recipe.id" (click)="openRecipe(recipe.id)"><span>✿</span><span>{{recipe.name}}<small>{{money(store.unitRecipeCost(recipe))}} costo / unid.</small></span><span>›</span></button><p class="helper" *ngIf="!store.data().recipes.length">No hay recetas guardadas.</p></aside>
+          <div class="recipe-content" *ngIf="recipeDraft as edit; else noRecipe">
+            <section class="panel recipe-main"><div class="panel-heading"><div><p class="overline">DATOS GENERALES</p><h2>Preparación</h2></div><button type="button" class="text-button danger" (click)="deleteRecipe(edit)">Eliminar receta</button></div>
+              <div class="form-grid"><label>Nombre de la receta<input [(ngModel)]="edit.name" maxlength="120" placeholder="Ej: Caja de 6 mini tartaletas"></label><label>Unidades vendibles obtenidas<input type="number" [(ngModel)]="edit.yield" min="1" step="1"></label></div>
+              <div class="form-actions"><button class="secondary" type="button" (click)="saveRecipe()">Guardar cambios</button></div>
+            </section>
+            <section class="panel recipe-main"><div class="panel-heading"><div><p class="overline">CANTIDADES Y COSTOS</p><h2>Ingredientes y materiales</h2></div></div>
+              <div class="line-table-wrap"><table><thead><tr><th>Tipo / producto</th><th>Cantidad utilizada</th><th>Costo</th><th></th></tr></thead><tbody>
+                <tr *ngFor="let line of edit.lines"><td class="strong"><span class="small-tag" [class.tag-purple]="line.catalogType === 'material'">{{line.catalogType === 'ingredient' ? 'INGREDIENTE' : 'MATERIAL'}}</span><div class="line-name">{{lineLabel(line)}}</div></td><td>{{decimal(line.quantity)}} {{line.unit}}</td><td>{{money(store.lineCost(line))}}</td><td><button class="icon-button danger" type="button" title="Quitar de receta" (click)="deleteLine(line.id)">×</button></td></tr>
+                <tr *ngIf="!edit.lines.length"><td colspan="4" class="empty">Agrega un ingrediente o material para comenzar.</td></tr>
+              </tbody></table></div>
+              <div class="line-creator"><div class="form-grid recipe-add-grid"><label>Tipo<select [(ngModel)]="newLine.catalogType" (ngModelChange)="changeLineType()"><option value="ingredient">Ingrediente</option><option value="material">Material</option></select></label><label>Producto<select [(ngModel)]="newLine.catalogId" (ngModelChange)="changeLineItem()"><option *ngFor="let item of itemOptions()" [value]="item.id">{{item.name}}</option></select></label><label>Cantidad<input type="number" [(ngModel)]="newLine.quantity" min="0.001" step="any"></label><label>Unidad<select [(ngModel)]="newLine.unit"><option *ngFor="let unit of unitOptions()" [value]="unit">{{unit}}</option></select></label></div><button class="secondary" type="button" [disabled]="!itemOptions().length" (click)="addLine()">＋ Agregar a la receta</button></div>
+            </section>
+            <section class="panel recipe-main"><div class="panel-heading"><div><p class="overline">COSTOS POR PREPARACIÓN</p><h2>Otros costos directos</h2></div></div><div class="form-grid triple"><label>Mano de obra (CLP)<input type="number" [(ngModel)]="edit.labor" min="0" step="1"></label><label>Reparto / pedido (CLP)<input type="number" [(ngModel)]="edit.delivery" min="0" step="1"></label><label>Otros gastos (CLP)<input type="number" [(ngModel)]="edit.other" min="0" step="1"></label></div><p class="helper">Estos valores corresponden a toda la preparación, no a cada unidad. Úsalos para gastos que no hayas contabilizado como fijos mensuales.</p><button class="secondary" type="button" (click)="saveRecipe()">Guardar costos</button></section>
+            <section class="panel result-panel"><div class="panel-heading"><div><p class="overline">CALCULADORA</p><h2>Resultado de tu receta</h2></div></div>
+              <div class="result-rows"><div><span>Ingredientes</span><strong>{{money(store.ingredientTotal(edit))}}</strong></div><div><span>Materiales y empaques</span><strong>{{money(store.materialTotal(edit))}}</strong></div><div><span>Mano de obra</span><strong>{{money(edit.labor)}}</strong></div><div><span>Reparto</span><strong>{{money(edit.delivery)}}</strong></div><div><span>Otros gastos directos</span><strong>{{money(edit.other)}}</strong></div><div><span>Gastos generales asignados</span><strong>{{money(store.overheadTotal(edit))}}</strong></div><div class="result-total"><span>Costo total de la preparación</span><strong>{{money(store.totalCost(edit))}}</strong></div><div><span>Costo por unidad vendible ({{edit.yield}})</span><strong>{{money(store.unitRecipeCost(edit))}}</strong></div></div>
+              <div class="margin-controls"><label>Margen de ganancia objetivo (%)<input type="number" [(ngModel)]="edit.margin" min="0" max="99" step="1"></label><button class="secondary" type="button" (click)="saveRecipe()">Guardar margen</button></div>
+              <div class="recommended"><p>PRECIO DE VENTA SUGERIDO / UNIDAD</p><strong>{{money(suggested(edit))}}</strong><span>Ganancia estimada: {{money(profit(edit))}} / unidad antes de impuestos</span></div><p class="helper">Se redondea hacia arriba a los próximos $100. Margen significa ganancia dividida por precio de venta, no recargo sobre el costo. No incluye cálculos tributarios.</p>
+            </section>
+          </div>
+          <ng-template #noRecipe><div class="panel empty-recipe"><div class="empty-icon">✿</div><h2>Comienza con una receta</h2><p>Crea una preparación y agrega sus ingredientes y materiales.</p><button class="primary" type="button" (click)="createRecipe()">＋ Crear receta</button></div></ng-template>
+        </div>
+      </ng-container>
+      <footer class="footer">Sweet Lizzi Costos · Primera versión local · Hecho con cuidado ♡</footer>
+    </div>
+  </main>
+</div>
