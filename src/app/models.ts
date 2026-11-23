@@ -1,4 +1,4 @@
-export type Unit = 'g' | 'kg' | 'ml' | 'l' | 'unidad';
+export type Unit = 'g' | 'kg' | 'ml' | 'l' | 'cm' | 'm' | 'unidad';
 export type CatalogType = 'ingredient' | 'material';
 
 export interface CatalogItem {
@@ -22,8 +22,12 @@ export interface Recipe {
   name: string;
   yield: number;           // Unidades vendibles que produce esta preparación
   lines: RecipeLine[];
-  labor: number;           // Mano de obra por preparación
-  delivery: number;        // Reparto por preparación / pedido
+  labor: number;           // Importe anterior; usado hasta registrar los minutos
+  laborHours?: number;     // Horas del formato anterior
+  hourlyRate?: number;     // Tarifa por receta del formato anterior
+  laborMinutes?: number;   // Minutos de trabajo por preparación
+  delivery: number;        // Importe anterior; usado hasta elegir si tiene delivery
+  hasDelivery?: boolean;   // Aplica el costo de delivery configurado globalmente
   other: number;           // Gas o electricidad medidos por preparación, etc.
   margin: number;          // Margen sobre precio de venta, en % (no markup)
 }
@@ -39,23 +43,27 @@ export interface AppData {
   materials: CatalogItem[];
   expenses: MonthlyExpense[];
   monthlyProduction: number; // Nº de unidades vendibles previstas por mes
+  hourlyRate?: number;     // Tarifa global de mano de obra, CLP por hora
+  deliveryFee?: number;    // Costo global de delivery por preparación, CLP
   recipes: Recipe[];
 }
 
 export const unitFamily = (unit: Unit): string => {
   if (unit === 'g' || unit === 'kg') return 'weight';
   if (unit === 'ml' || unit === 'l') return 'volume';
+  if (unit === 'cm' || unit === 'm') return 'length';
   return 'count';
 };
 export const unitsFor = (unit: Unit): Unit[] => {
   switch (unitFamily(unit)) {
     case 'weight': return ['g', 'kg'];
     case 'volume': return ['ml', 'l'];
+    case 'length': return ['cm', 'm'];
     default: return ['unidad'];
   }
 };
 export const toBase = (quantity: number, unit: Unit): number =>
-  quantity * (unit === 'kg' || unit === 'l' ? 1000 : 1);
+  quantity * (unit === 'kg' || unit === 'l' ? 1000 : unit === 'm' ? 100 : 1);
 
 export const validNonnegative = (value: number): boolean =>
   Number.isFinite(value) && value >= 0;
@@ -80,6 +88,8 @@ export const seed: AppData = {
     {id: 'e2', name: 'Agua mensual', amount: 16000}
   ],
   monthlyProduction: 200,
+  hourlyRate: 0,
+  deliveryFee: 0,
   recipes: [
     {
       id: 'r1', name: 'Caja de 12 mini brownies', yield: 1,

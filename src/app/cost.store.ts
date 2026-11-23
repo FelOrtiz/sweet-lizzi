@@ -10,7 +10,7 @@ function validCatalogItem(item: CatalogItem): boolean {
   return typeof item?.id === 'string' && typeof item.name === 'string' && item.name.trim().length > 0 &&
     Number.isFinite(item.quantity) && item.quantity > 0 &&
     Number.isFinite(item.price) && item.price >= 0 &&
-    ['g', 'kg', 'ml', 'l', 'unidad'].includes(item.unit);
+    ['g', 'kg', 'ml', 'l', 'cm', 'm', 'unidad'].includes(item.unit);
 }
 function isValidData(data: unknown): data is AppData {
   if (data === null || typeof data !== 'object') return false;
@@ -19,13 +19,19 @@ function isValidData(data: unknown): data is AppData {
     Array.isArray(d.materials) && d.materials.every(validCatalogItem) &&
     Array.isArray(d.expenses) && d.expenses.every(e => typeof e.id === 'string' && typeof e.name === 'string' && Number.isFinite(e.amount) && e.amount >= 0) &&
     Number.isFinite(d.monthlyProduction) && (d.monthlyProduction ?? 0) > 0 &&
+    (d.hourlyRate === undefined || (Number.isFinite(d.hourlyRate) && d.hourlyRate >= 0)) &&
+    (d.deliveryFee === undefined || (Number.isFinite(d.deliveryFee) && d.deliveryFee >= 0)) &&
     Array.isArray(d.recipes) && d.recipes.every(r => typeof r.id === 'string' && typeof r.name === 'string' &&
       Number.isFinite(r.yield) && r.yield > 0 && Number.isFinite(r.labor) && r.labor >= 0 &&
+      (r.laborHours === undefined || (Number.isFinite(r.laborHours) && r.laborHours >= 0)) &&
+      (r.hourlyRate === undefined || (Number.isFinite(r.hourlyRate) && r.hourlyRate >= 0)) &&
+      (r.laborMinutes === undefined || (Number.isFinite(r.laborMinutes) && r.laborMinutes >= 0)) &&
+      (r.hasDelivery === undefined || typeof r.hasDelivery === 'boolean') &&
       Number.isFinite(r.delivery) && r.delivery >= 0 && Number.isFinite(r.other) && r.other >= 0 &&
       Number.isFinite(r.margin) && r.margin >= 0 && r.margin < 100 && Array.isArray(r.lines) &&
       r.lines.every(l => typeof l.id === 'string' && ['ingredient', 'material'].includes(l.catalogType) &&
         typeof l.catalogId === 'string' && Number.isFinite(l.quantity) && l.quantity > 0 &&
-        ['g', 'kg', 'ml', 'l', 'unidad'].includes(l.unit)));
+        ['g', 'kg', 'ml', 'l', 'cm', 'm', 'unidad'].includes(l.unit)));
 }
 function readSaved(): AppData {
   try {
@@ -72,9 +78,19 @@ export class CostStore {
   materialTotal(recipe: Recipe): number {
     return recipe.lines.filter(l => l.catalogType === 'material').reduce((sum, l) => sum + this.lineCost(l), 0);
   }
+  hourlyRate(): number { return this.data().hourlyRate ?? 0; }
+  deliveryFee(): number { return this.data().deliveryFee ?? 0; }
+  laborCost(recipe: Recipe): number {
+    if (recipe.laborMinutes !== undefined) return recipe.laborMinutes / 60 * this.hourlyRate();
+    return recipe.laborHours !== undefined && recipe.hourlyRate !== undefined
+      ? recipe.laborHours * recipe.hourlyRate : recipe.labor;
+  }
+  deliveryCost(recipe: Recipe): number {
+    return recipe.hasDelivery === undefined ? recipe.delivery : recipe.hasDelivery ? this.deliveryFee() : 0;
+  }
   overheadTotal(recipe: Recipe): number { return this.overheadPerUnit() * recipe.yield; }
   totalCost(recipe: Recipe): number {
-    return this.ingredientTotal(recipe) + this.materialTotal(recipe) + this.overheadTotal(recipe) + recipe.labor + recipe.delivery + recipe.other;
+    return this.ingredientTotal(recipe) + this.materialTotal(recipe) + this.overheadTotal(recipe) + this.laborCost(recipe) + this.deliveryCost(recipe) + recipe.other;
   }
   unitRecipeCost(recipe: Recipe): number { return this.totalCost(recipe) / Math.max(1, recipe.yield); }
   suggestedUnitPrice(recipe: Recipe): number {
@@ -110,6 +126,12 @@ export class CostStore {
   }
   setMonthlyProduction(production: number): void {
     if (Number.isFinite(production) && production > 0) this._data.update(old => ({...old, monthlyProduction: production}));
+  }
+  setHourlyRate(rate: number): void {
+    if (Number.isFinite(rate) && rate >= 0) this._data.update(old => ({...old, hourlyRate: rate}));
+  }
+  setDeliveryFee(fee: number): void {
+    if (Number.isFinite(fee) && fee >= 0) this._data.update(old => ({...old, deliveryFee: fee}));
   }
   upsertRecipe(recipe: Recipe): void {
     this._data.update(old => {

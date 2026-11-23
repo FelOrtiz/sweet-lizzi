@@ -6,12 +6,12 @@ MVP de calculadora de costos para repostería (en español, pesos chilenos).
 
 - Catálogo de ingredientes: nombre, presentación de compra (cantidad + unidad) y precio.
 - Catálogo de materiales: cajas, stickers, mangas y otros insumos.
-- Conversión automática g/kg y ml/l, y soporte de unidades.
+- Conversión automática g/kg, mL/L y cm/m, y soporte de unidades.
 - Recetas con cantidades utilizadas y desglose de costo por línea.
 - Gastos generales mensuales, repartidos entre las unidades vendibles estimadas del mes.
-- Mano de obra, reparto y otros costos directos por preparación.
+- Tarifa por hora y costo de delivery configurables en Costos directos; cada receta registra minutos trabajados y si requiere delivery.
 - Rendimiento por receta (porciones/cajas/unidades vendibles).
-- Precio sugerido por unidad en CLP, en función del margen **sobre venta**; redondeado hacia arriba a $100.
+- Precio sugerido por unidad en CLP, en función del margen **sobre venta**; redondeado hacia arriba a $10.
 - Edición de catálogos, gastos y recetas; prevención de eliminación de productos referenciados.
 - Persistencia automática en `localStorage` y respaldo importable/exportable en JSON.
 - Datos de ejemplo editables para explorar la calculadora.
@@ -35,14 +35,26 @@ npm run build
 
 La compilación quedará bajo `dist/sweet-lizzi-costos/browser` y puede alojarse en hosting estático. El proyecto usa base href `/`, por lo que si lo publicas en GitHub Pages bajo `/nombre-repo/`, ajusta la base href (por ejemplo, `ng build --base-href /nombre-repo/`).
 
+## Publicar en GitHub Pages
+
+El flujo de [.github/workflows/deploy-pages.yml](./.github/workflows/deploy-pages.yml) compila la aplicación con la ruta base `/sweet-lizzi/` y publica el resultado cuando hay cambios en `main` (o al ejecutarlo manualmente).
+
+1. Asegúrate de que el repositorio `FelOrtiz/sweet-lizzi` exista en GitHub y de tener acceso para subir cambios. Si usas GitHub Free, debe ser público para habilitar Pages.
+2. Sube los cambios de este proyecto a `main`.
+3. En GitHub, abre **Settings → Pages** y elige **GitHub Actions** como fuente de publicación.
+4. Espera a que termine **Deploy to GitHub Pages** en la pestaña **Actions**. El sitio quedará en `https://felortiz.github.io/sweet-lizzi/`.
+
+El archivo de respaldo **no se publica**: las recetas y precios se guardan en el navegador, no en GitHub Pages. Para usar datos de otro dispositivo, abre la web publicada e impórtalos con **Importar respaldo**. No subas respaldos con datos privados al repositorio.
+
 ## Cómo se calculan los precios
 
-1. Costo por unidad base = precio de compra / (cantidad comprada expresada en gramos, mililitros o unidades).
+1. Costo por unidad base = precio de compra / (cantidad comprada expresada en gramos, mililitros, centímetros o unidades).
 2. Costo de línea = cantidad utilizada en unidad base × costo por unidad base.
 3. Gasto general por unidad vendible = total de gastos mensuales / producción mensual vendible estimada.
-4. Costo receta = ingredientes + materiales + mano de obra + reparto + otros directos + (gasto general unitario × rendimiento).
-5. Costo por unidad vendible = costo receta / rendimiento.
-6. Precio teórico = costo unitario / (1 − margen deseado/100). Precio sugerido = precio teórico redondeado hacia arriba al siguiente $100.
+4. Mano de obra = minutos trabajados / 60 × tarifa por hora. El delivery se suma solo si está marcado en la receta.
+5. Costo receta = ingredientes + materiales + mano de obra + delivery + otros directos + (gasto general unitario × rendimiento).
+6. Costo por unidad vendible = costo receta / rendimiento.
+7. Precio teórico = costo unitario / (1 − margen deseado/100). Precio sugerido = precio teórico redondeado hacia arriba al siguiente $10.
 
 Ejemplo: comprar 1 kg de harina por $1.500 y usar 250 g cuesta $375.
 
