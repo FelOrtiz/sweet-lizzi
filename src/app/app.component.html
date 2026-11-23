@@ -13,7 +13,7 @@
     <div class="sidebar-bottom">
       <div class="storage-status"><span class="status-dot"></span>Datos guardados en este navegador</div>
       <button type="button" class="text-button dark" (click)="exportBackup()">↓ Exportar respaldo</button>
-      <label class="text-button dark upload">↑ Importar respaldo<input type="file" accept="application/json,.json" (change)="importBackup($event)"></label>
+      <label class="text-button dark upload">↑ Importar respaldo<input type="file" accept="application/json,.json" aria-label="Importar respaldo JSON" (change)="importBackup($event)"></label>
     </div>
   </aside>
 

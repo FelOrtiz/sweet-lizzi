@@ -425,8 +425,11 @@ export class AppComponent {
     const blob = new Blob([JSON.stringify(this.store.data(), null, 2)], {type: 'application/json'});
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
-    link.href = url; link.download = 'sweet-lizzi-respaldo.json'; link.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    link.href = url; link.download = 'sweet-lizzi-respaldo.json';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
   }
   async importBackup(event: Event): Promise<void> {
     const input = event.target as HTMLInputElement;
